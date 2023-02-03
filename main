@@ -1,0 +1,153 @@
+import cv2
+import numpy
+import torch
+import torchvision
+from torch import nn
+from torch import optim
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+from sklearn.metrics import accuracy_score
+strain_loader = torch.utils.data.DataLoader(
+    torchvision.datasets.MNIST('./data',train=True, download=True,
+                               transform=torchvision.transforms.ToTensor(),
+                               ),batch_size=32, shuffle=True)
+stest_loader = torch.utils.data.DataLoader(
+    torchvision.datasets.MNIST('./data', train=False, download=True,
+                               transform=torchvision.transforms.ToTensor(),
+                               ),
+    batch_size=1, shuffle=True)
+
+
+#strain_loader=torch.utils.data.DataLoader(torchvision.datasets.MNIST('./data',train=True,download=True,transform=None))
+#stest_loader=torch.utils.data.DataLoader(torchvision.datasets.MNIST('./data',train=True,download=True,transform=None))
+
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+class NeuralNetwork(nn.Module):
+    def __init__(self):
+        super(NeuralNetwork, self).__init__()
+        self.flatten = nn.Flatten()
+        self.linear_relu_stack = nn.Sequential(
+            nn.Linear(28*28, 64),
+            nn.ReLU(),
+            nn.Linear(64,32),
+            nn.ReLU(),
+            nn.Linear(32,16),
+            nn.ReLU(),
+            nn.Linear(16,10),
+            nn.ReLU()
+        )
+       
+        self.softmax = nn.Softmax(1)
+
+    def forward(self, x):
+        x = self.flatten(x)
+        #print(self.linear_relu_stack(x))
+        #logits = self.softmax(self.linear_relu_stack(x))
+        
+        out=self.linear_relu_stack(x)
+        out = self.softmax(out)
+        return out
+        
+class classifier(nn.Module):
+    def __init__(self):
+        super(classifier, self).__init__()
+        self.model = NeuralNetwork()
+        self.optimizer = optim.Adam(self.model.parameters(), lr=0.0001)
+        self.loss = torch.nn.BCEWithLogitsLoss()
+
+def training(self,train_loader):    
+
+        for i, data in tqdm(train_loader):
+                #image=numpy.asarray(img)
+            running_loss = 0
+            last_loss=0
+                #for j in range(1) :
+            outputs = self.model(i)
+                #ls = torch.zeros((1,10))
+                #ls[0][data[j]] = 1
+                #actual=data.reshape([32,10]).type(torch.FloatTensor)
+                #print(data)
+                #print(outputs)
+            actual=torch.zeros((32,10))
+            for r in range(32) :
+                actual[r][data[r]]=1
+                #print(actual)
+
+            loss = self.loss(outputs,actual)
+            loss.backward()
+            running_loss += loss.item()
+                #if j % 1 == 1:
+                     #last_loss = running_loss / 1 # loss per batch
+                     #running_loss = 0
+        last_loss = running_loss/1875
+        print("LOSS:", last_loss,"\n")
+        self.optimizer.step()
+        return last_loss
+
+def init_weights(m):
+    if isinstance(m, nn.Linear):
+        torch.nn.init.xavier_uniform(m.weight)
+        m.bias.data.fill_(0.001)
+        m.requires_grad_(True)
+
+def train_epochs(self,train_loader,n) :
+        self.model.train()
+        for i in tqdm(range(n)):
+            epochloss = training(self,train_loader)
+            print("Epoch{} Loss:{}",format(str(i + 1), str(epochloss)))
+            #inference(cls,stest_loader)
+        torch.save(self.state_dict(),"C:\\Users\\Pranav\\Desktop\\MNIST_Stuff\\model.pth")
+    
+def inference(self, test):
+        self.model.eval()
+        test_loss = 0
+        out = []
+        lab = []
+        for i, data in tqdm(test):
+            for j in range(1) :
+                    outputs = self.model(i[j])
+                    #print(outputs)
+                    ls = torch.zeros((1,10))
+                    ls[0][data[j]] = 1
+                    test_loss += self.loss(outputs, ls).item()
+                    #pred = outputs.data.max(1, keepdim=True)[1]
+                    max=0
+                    pred=-1
+                    for k in range(10) :
+                        if max<outputs[0][k] :
+                            max=outputs[0][k]
+                            pred=k
+                    out.append(int(pred))
+                    lab.append(int(data[j]))
+        print(outputs)
+
+        test_loss /= len(test.dataset)
+        accuracy = accuracy_score(lab,out,normalize=True,sample_weight=None)*100
+        print('\nTest set: Avg. loss: {:.4f}, Accuracy: ({:.5f}%)\n'.format(
+            test_loss,accuracy)) 
+        return lab,out,test_loss, accuracy  
+
+            
+  
+            
+
+
+# img, target = mnist_datatrain[0]
+
+# image = numpy.asarray(img)
+# cv2.imshow('img',image)
+# cv2.waitKey(0)
+#print(strain_loader[0])
+cls = classifier()
+cls.apply(init_weights)
+train_epochs(cls,train_loader=strain_loader,n=10)
+ckpt = torch.load("C:\\Users\\Pranav\\Desktop\\MNIST_Stuff\\model.pth")
+cls.load_state_dict(ckpt)
+cls.eval()
+l,o,t, a =inference(cls,stest_loader)
+
+#print(l,o,t)
+
+
